@@ -29,17 +29,23 @@ jobs:
           python -m pip install google-genai
           python -m pip install huggingface_hub pillow
 
-      - name: Generate LinkedIn post
+      - name: Generate LinkedIn topic and post
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           python generate_post.py
 
-      - name: Show generated post
+      - name: Show generated topic
         run: |
-          echo "===== GENERATED LINKEDIN POST ====="
+          echo "===== TOPIC ====="
+          cat current_topic.txt
+          echo "================="
+
+      - name: Show generated LinkedIn post
+        run: |
+          echo "===== LINKEDIN POST ====="
           cat linkedin_post.txt
-          echo "===================================="
+          echo "========================="
 
       - name: Generate AI image
         env:
@@ -49,10 +55,11 @@ jobs:
 
       - name: Check generated files
         run: |
-          echo "===== POST ====="
+          echo "===== GENERATED FILES ====="
+          ls -lh current_topic.txt
           ls -lh linkedin_post.txt
-          echo "===== IMAGE ====="
           ls -lh linkedin_test_hf.png
+          echo "==========================="
 
       - name: Save topic history
         run: |
@@ -73,6 +80,7 @@ jobs:
         with:
           name: linkedin-generated-content
           path: |
+            current_topic.txt
             linkedin_post.txt
             linkedin_test_hf.png
           retention-days: 7
