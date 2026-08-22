@@ -1,7 +1,30 @@
+import json
 import os
 from pathlib import Path
 
 from google import genai
+
+
+HISTORY_FILE = Path("topics_history.json")
+POST_FILE = Path("linkedin_post.txt")
+
+
+def load_history():
+    if not HISTORY_FILE.exists():
+        return []
+
+    try:
+        data = json.loads(HISTORY_FILE.read_text(encoding="utf-8"))
+        return data if isinstance(data, list) else []
+    except (json.JSONDecodeError, OSError):
+        return []
+
+
+def save_history(history):
+    HISTORY_FILE.write_text(
+        json.dumps(history, ensure_ascii=False, indent=2),
+        encoding="utf-8",
+    )
 
 
 def main():
@@ -12,12 +35,21 @@ def main():
 
     client = genai.Client(api_key=api_key)
 
-    prompt = """
+    history = load_history()
+
+    history_text = "\n".join(f"- {topic}" for topic in history[-50:])
+
+    prompt = f"""
 You are a professional Computer Science and IT content writer for LinkedIn.
 
-Create ONE original LinkedIn post for a professional IT audience.
+Your task is to choose ONE NEW technical topic and write one LinkedIn post.
 
-Choose ONE useful topic from:
+Previously used topics:
+{history_text if history_text else "- No previous topics yet."}
+
+Choose a topic that is clearly different from all previously used topics.
+
+Possible areas:
 - Computer Science
 - IT Support
 - Systems Administration
@@ -29,41 +61,72 @@ Choose ONE useful topic from:
 - Virtualization
 - DevOps
 - IT Infrastructure
+- Databases
+- Automation
+- AI fundamentals
 
-Requirements:
+Return the answer in EXACTLY this format:
+
+TOPIC: <short topic title>
+
+POST:
+<final LinkedIn post>
+
+Requirements for the post:
 - Professional and natural English.
 - Educational and technically useful.
-- Start with a strong but natural hook.
-- Explain one practical technical concept.
-- Include 3 to 5 short practical points.
-- End with one simple question that encourages discussion.
+- Strong but natural opening.
+- Include 3 to 5 practical points.
+- End with one simple question.
 - Add 3 to 5 relevant hashtags.
+- No excessive emojis.
+- No clickbait.
 - Do not mention AI.
-- Do not say that the post was generated.
-- Do not use excessive emojis.
-- Do not use clickbait.
+- Do not claim the post was generated.
 - Do not invent statistics or fake facts.
 - Maximum 1800 characters.
-- Return ONLY the final LinkedIn post.
 """
 
-    print("Generating LinkedIn post with Gemini...")
+    print("Generating a new LinkedIn topic and post...")
 
     response = client.models.generate_content(
         model="gemini-3.6-flash",
         contents=prompt,
     )
 
-    post = (response.text or "").strip()
+    text = (response.text or "").strip()
+
+    if not text:
+        raise RuntimeError("Gemini returned an empty response.")
+
+    if "TOPIC:" not in text or "POST:" not in text:
+        raise RuntimeError("Gemini returned an unexpected format.")
+
+    topic_part, post_part = text.split("POST:", 1)
+
+    topic = topic_part.replace("TOPIC:", "").strip()
+    post = post_part.strip()
+
+    if not topic:
+        raise RuntimeError("No topic was generated.")
 
     if not post:
-        raise RuntimeError("Gemini returned an empty post.")
+        raise RuntimeError("No LinkedIn post was generated.")
 
-    Path("linkedin_post.txt").write_text(
-        post,
-        encoding="utf-8"
-    )
+    normalized_history = {item.strip().lower() for item in history}
 
+    if topic.lower() in normalized_history:
+        raise RuntimeError(
+            f"Duplicate topic generated: {topic}"
+        )
+
+    history.append(topic)
+    save_history(history)
+
+    POST_FILE.write_text(post, encoding="utf-8")
+
+    print("TOPIC_GENERATION_SUCCESS")
+    print(f"Topic: {topic}")
     print("POST_GENERATION_SUCCESS")
     print(post)
 
