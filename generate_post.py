@@ -17,7 +17,7 @@ def main():
     prompt = """
 You are a professional Computer Science and IT content writer for LinkedIn.
 
-Create ONE original LinkedIn post for an IT professional audience.
+Create ONE original LinkedIn post for a professional IT audience.
 
 Choose ONE useful topic from:
 - Computer Science
@@ -30,16 +30,14 @@ Choose ONE useful topic from:
 - Linux
 - Virtualization
 - DevOps
-- IT Infrastructure
 
 Requirements:
 - Professional and natural English.
-- Suitable for a technical LinkedIn audience.
+- Educational and technically useful.
 - Start with a strong but natural hook.
-- Explain one practical technical idea.
-- Include 3 to 5 useful practical points.
-- Make it educational, not motivational.
-- End with a simple question that encourages discussion.
+- Explain one practical technical concept.
+- Include 3 to 5 short practical points.
+- End with one simple question that encourages discussion.
 - Add 3 to 5 relevant hashtags.
 - Do not mention AI.
 - Do not say that the post was generated.
