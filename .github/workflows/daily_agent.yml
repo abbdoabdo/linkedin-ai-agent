@@ -1,0 +1,17 @@
+name: LinkedIn AI Agent
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-agent:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Test Agent
+        run: |
+          echo "LinkedIn AI Agent is ready."
+          echo "Current UTC time: $(date -u)"
