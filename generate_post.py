@@ -11,7 +11,6 @@ def main():
         raise RuntimeError("HF_TOKEN is not configured.")
 
     client = InferenceClient(
-        provider="publicai",
         api_key=token,
     )
 
@@ -20,17 +19,27 @@ You are a professional Computer Science and IT content writer for LinkedIn.
 
 Create ONE original LinkedIn post for an IT professional audience.
 
-Choose ONE useful Computer Science, IT Support, Systems, Networking,
-Cybersecurity, Cloud, Microsoft 365, Linux, Virtualization, or DevOps topic.
+Choose ONE useful topic from:
+- Computer Science
+- IT Support
+- Systems Administration
+- Networking
+- Cybersecurity
+- Cloud Computing
+- Microsoft 365
+- Linux
+- Virtualization
+- DevOps
+- IT Infrastructure
 
 Requirements:
 - Professional and natural English.
 - Suitable for a technical LinkedIn audience.
 - Start with a strong but natural hook.
-- Explain one practical and useful technical idea.
-- Include 3 to 5 short practical points.
-- Make the content educational, not motivational.
-- Include a simple question at the end to encourage discussion.
+- Explain one practical technical idea.
+- Include 3 to 5 useful practical points.
+- Make it educational, not motivational.
+- End with a simple question that encourages discussion.
 - Add 3 to 5 relevant hashtags.
 - Do not mention AI.
 - Do not say that the post was generated.
@@ -44,13 +53,13 @@ Requirements:
     print("Generating LinkedIn post...")
 
     result = client.chat.completions.create(
-        model="swiss-ai/Apertus-8B-Instruct-2509",
+        model="swiss-ai/Apertus-8B-Instruct-2509:publicai",
         messages=[
             {
                 "role": "system",
                 "content": (
-                    "You are a professional Computer Science and IT "
-                    "LinkedIn content writer."
+                    "You are a professional Computer Science "
+                    "and IT LinkedIn content writer."
                 ),
             },
             {
