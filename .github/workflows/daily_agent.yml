@@ -61,17 +61,28 @@ jobs:
           ls -lh linkedin_test_hf.png
           echo "==========================="
 
-      - name: Save topic history
+      - name: Prepare latest generated content
+        run: |
+          mkdir -p generated
+
+          cp current_topic.txt generated/latest_topic.txt
+          cp linkedin_post.txt generated/latest_post.txt
+          cp linkedin_test_hf.png generated/latest_image.png
+
+      - name: Save topic history and latest content
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git add topics_history.json
+          git add generated/latest_topic.txt
+          git add generated/latest_post.txt
+          git add generated/latest_image.png
 
           if git diff --cached --quiet; then
-            echo "No topic history changes to commit."
+            echo "No repository changes to commit."
           else
-            git commit -m "Update topic history"
+            git commit -m "Update daily LinkedIn content"
             git push
           fi
 
