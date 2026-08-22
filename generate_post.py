@@ -28,6 +28,7 @@ Choose ONE useful topic from:
 - Linux
 - Virtualization
 - DevOps
+- IT Infrastructure
 
 Requirements:
 - Professional and natural English.
@@ -49,7 +50,7 @@ Requirements:
     print("Generating LinkedIn post with Gemini...")
 
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-3.6-flash",
         contents=prompt,
     )
 
@@ -58,7 +59,10 @@ Requirements:
     if not post:
         raise RuntimeError("Gemini returned an empty post.")
 
-    Path("linkedin_post.txt").write_text(post, encoding="utf-8")
+    Path("linkedin_post.txt").write_text(
+        post,
+        encoding="utf-8"
+    )
 
     print("POST_GENERATION_SUCCESS")
     print(post)
