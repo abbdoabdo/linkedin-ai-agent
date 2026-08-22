@@ -4,14 +4,31 @@ on:
   workflow_dispatch:
 
 jobs:
-  test-agent:
+  generate-image:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Test Agent
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
         run: |
-          echo "LinkedIn AI Agent is ready."
-          echo "Current UTC time: $(date -u)"
+          python -m pip install --upgrade pip
+          pip install huggingface_hub pillow
+
+      - name: Generate AI image
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python generate_image.py
+
+      - name: Upload generated image
+        uses: actions/upload-artifact@v4
+        with:
+          name: linkedin-test-image
+          path: linkedin_test_hf.png
