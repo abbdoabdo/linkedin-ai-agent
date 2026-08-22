@@ -3,39 +3,61 @@ from pathlib import Path
 
 from huggingface_hub import InferenceClient
 
-token = os.environ["HF_TOKEN"]
 
-client = InferenceClient(
-    provider="auto",
-    api_key=token,
-)
+def main():
+    token = os.environ.get("HF_TOKEN")
 
-prompt = """
-Create a professional 16:9 LinkedIn image about Computer Science and IT.
+    if not token:
+        raise RuntimeError("HF_TOKEN is not configured.")
 
-Topic:
-Microsoft 365 Security, MFA and Identity Protection.
+    topic_file = Path("current_topic.txt")
+
+    if not topic_file.exists():
+        raise RuntimeError("current_topic.txt was not found.")
+
+    topic = topic_file.read_text(encoding="utf-8").strip()
+
+    if not topic:
+        raise RuntimeError("Current topic is empty.")
+
+    client = InferenceClient(
+        provider="auto",
+        api_key=token,
+    )
+
+    prompt = f"""
+Create a professional 16:9 LinkedIn visual about:
+
+{topic}
 
 Style:
-- Modern enterprise cybersecurity
-- Premium professional LinkedIn design
+- Modern Computer Science and IT
+- Premium professional LinkedIn aesthetic
+- Clean enterprise technology design
+- Visually explain the main technical concept
 - Dark navy and blue technology atmosphere
-- Authentication and identity security concepts
-- Clean composition
+- Professional and sophisticated
 - No people
 - No copyrighted logos
 - Minimal or no text
-- Suitable for a professional technology audience
+- Suitable for an IT professional audience
+- The visual must clearly match the topic
 """
 
-print("Generating image...")
+    print(f"Generating image for topic: {topic}")
+    print("Generating image...")
 
-image = client.text_to_image(
-    prompt,
-    model="black-forest-labs/FLUX.1-schnell",
-)
+    image = client.text_to_image(
+        prompt,
+        model="black-forest-labs/FLUX.1-schnell",
+    )
 
-output = Path("linkedin_test_hf.png")
-image.save(output)
+    output = Path("linkedin_test_hf.png")
+    image.save(output)
 
-print(f"Image saved to: {output}")
+    print("IMAGE_GENERATION_SUCCESS")
+    print(f"Image saved to: {output}")
+
+
+if __name__ == "__main__":
+    main()
