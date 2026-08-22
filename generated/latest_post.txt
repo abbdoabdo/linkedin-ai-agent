@@ -1,0 +1,24 @@
+Default server configurations prioritize ease of setup over maximum security. When provisioning a new Linux server, securing Secure Shell (SSH) access should be an immediate priority to protect your infrastructure against unauthorized access and automated brute-force attacks.
+
+Here are five practical steps to harden SSH on your Linux servers:
+
+1. Enforce Key-Based Authentication
+Disable password-based logins entirely by setting `PasswordAuthentication no` in `/etc/ssh/sshd_config`. Require modern SSH key pairs, such as ED25519 or RSA (4096-bit), for all user authentication.
+
+2. Restrict Direct Root Login
+Never allow direct remote access to the root user. Set `PermitRootLogin no` to require administrators to log in using an unprivileged user account and elevate privileges using `sudo` when necessary.
+
+3. Restrict Network Exposure
+Exposing SSH directly to the public internet creates constant log noise and unnecessary attack surface. Limit incoming SSH connections to known corporate IP addresses, bastion hosts, or VPN subnets using local firewalls (UFW/iptables) or cloud security groups.
+
+4. Configure Automatic Idle Session Timeouts
+Prevent unattended sessions from remaining open indefinitely. Set `ClientAliveInterval 300` and `ClientAliveCountMax 2` in the SSH configuration to automatically terminate connections after ten minutes of inactivity.
+
+5. Implement Automated Rate Limiting
+Deploy utilities like Fail2ban to monitor authentication logs. Configure rules to automatically block IP addresses that generate repeated failed login attempts within a short timeframe.
+
+Implementing these access controls significantly reduces your server's exposure without impacting daily operational workflows.
+
+What is your team’s non-negotiable step when securing a newly provisioned Linux server?
+
+#Linux #Cybersecurity #SysAdmin #DevOps #ITSecurity
