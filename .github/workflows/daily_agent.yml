@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  generate-image:
+  generate-content:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,20 +21,36 @@ jobs:
           python -m pip install --upgrade pip
           pip install huggingface_hub pillow
 
+      - name: Generate LinkedIn post
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python generate_post.py
+
+      - name: Show generated post
+        run: |
+          echo "===== GENERATED LINKEDIN POST ====="
+          cat linkedin_post.txt
+          echo "===================================="
+
       - name: Generate AI image
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
           python generate_image.py
 
-      - name: Check generated image
+      - name: Check generated files
         run: |
+          echo "===== POST ====="
+          ls -lh linkedin_post.txt
+          echo "===== IMAGE ====="
           ls -lh linkedin_test_hf.png
-          file linkedin_test_hf.png
 
-      - name: Upload generated image
+      - name: Upload generated content
         uses: actions/upload-artifact@v4
         with:
-          name: linkedin-test-image
-          path: linkedin_test_hf.png
+          name: linkedin-generated-content
+          path: |
+            linkedin_post.txt
+            linkedin_test_hf.png
           retention-days: 7
