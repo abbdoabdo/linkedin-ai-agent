@@ -7,6 +7,7 @@ from google import genai
 
 HISTORY_FILE = Path("topics_history.json")
 POST_FILE = Path("linkedin_post.txt")
+CURRENT_TOPIC_FILE = Path("current_topic.txt")
 
 
 def load_history():
@@ -36,18 +37,17 @@ def main():
     client = genai.Client(api_key=api_key)
 
     history = load_history()
-
     history_text = "\n".join(f"- {topic}" for topic in history[-50:])
 
     prompt = f"""
 You are a professional Computer Science and IT content writer for LinkedIn.
 
-Your task is to choose ONE NEW technical topic and write one LinkedIn post.
+Choose ONE NEW technical topic and write one LinkedIn post.
 
 Previously used topics:
 {history_text if history_text else "- No previous topics yet."}
 
-Choose a topic that is clearly different from all previously used topics.
+The new topic must be clearly different from all previous topics.
 
 Possible areas:
 - Computer Science
@@ -65,14 +65,14 @@ Possible areas:
 - Automation
 - AI fundamentals
 
-Return the answer in EXACTLY this format:
+Return EXACTLY:
 
 TOPIC: <short topic title>
 
 POST:
 <final LinkedIn post>
 
-Requirements for the post:
+Requirements:
 - Professional and natural English.
 - Educational and technically useful.
 - Strong but natural opening.
@@ -116,14 +116,14 @@ Requirements for the post:
     normalized_history = {item.strip().lower() for item in history}
 
     if topic.lower() in normalized_history:
-        raise RuntimeError(
-            f"Duplicate topic generated: {topic}"
-        )
+        raise RuntimeError(f"Duplicate topic generated: {topic}")
 
     history.append(topic)
+
     save_history(history)
 
     POST_FILE.write_text(post, encoding="utf-8")
+    CURRENT_TOPIC_FILE.write_text(topic, encoding="utf-8")
 
     print("TOPIC_GENERATION_SUCCESS")
     print(f"Topic: {topic}")
