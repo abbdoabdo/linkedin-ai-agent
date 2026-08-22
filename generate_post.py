@@ -1,18 +1,16 @@
 import os
 from pathlib import Path
 
-from huggingface_hub import InferenceClient
+from google import genai
 
 
 def main():
-    token = os.environ.get("HF_TOKEN")
+    api_key = os.environ.get("GEMINI_API_KEY")
 
-    if not token:
-        raise RuntimeError("HF_TOKEN is not configured.")
+    if not api_key:
+        raise RuntimeError("GEMINI_API_KEY is not configured.")
 
-    client = InferenceClient(
-        api_key=token,
-    )
+    client = genai.Client(api_key=api_key)
 
     prompt = """
 You are a professional Computer Science and IT content writer for LinkedIn.
@@ -48,34 +46,19 @@ Requirements:
 - Return ONLY the final LinkedIn post.
 """
 
-    print("Generating LinkedIn post...")
+    print("Generating LinkedIn post with Gemini...")
 
-    result = client.chat.completions.create(
-        model="swiss-ai/Apertus-8B-Instruct-2509:publicai",
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You are a professional Computer Science "
-                    "and IT LinkedIn content writer."
-                ),
-            },
-            {
-                "role": "user",
-                "content": prompt,
-            },
-        ],
-        max_tokens=800,
-        temperature=0.8,
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt,
     )
 
-    post = result.choices[0].message.content.strip()
+    post = (response.text or "").strip()
 
     if not post:
-        raise RuntimeError("The model returned an empty post.")
+        raise RuntimeError("Gemini returned an empty post.")
 
-    output_file = Path("linkedin_post.txt")
-    output_file.write_text(post, encoding="utf-8")
+    Path("linkedin_post.txt").write_text(post, encoding="utf-8")
 
     print("POST_GENERATION_SUCCESS")
     print(post)
