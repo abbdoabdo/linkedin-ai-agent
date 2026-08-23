@@ -1,3 +1,4 @@
+```yaml
 name: LinkedIn AI Agent
 
 on:
@@ -64,43 +65,40 @@ jobs:
           ls -lh linkedin_test_hf.png
           echo "==========================="
 
-      - name: Prepare latest generated content
-        run: |
-          mkdir -p generated
-
-          cp current_topic.txt generated/latest_topic.txt
-          cp linkedin_post.txt generated/latest_post.txt
-          cp linkedin_test_hf.png generated/latest_image.png
-
-      - name: Publish to personal LinkedIn profile
+      - name: Test LinkedIn Access Token
         env:
           LINKEDIN_ACCESS_TOKEN: ${{ secrets.LINKEDIN_ACCESS_TOKEN }}
         run: |
-          python publish_linkedin.py
+          python - <<'PY'
+          import os
+          import requests
 
-      - name: Save topic history and latest content
+          token = os.environ.get("LINKEDIN_ACCESS_TOKEN")
+
+          if not token:
+              raise SystemExit("LINKEDIN_ACCESS_TOKEN is missing.")
+
+          url = "https://api.linkedin.com/v2/userinfo"
+
+          response = requests.get(
+              url,
+              headers={
+                  "Authorization": f"Bearer {token}"
+              },
+              timeout=30,
+          )
+
+          print("HTTP STATUS:", response.status_code)
+          print("RESPONSE:")
+          print(response.text)
+
+          if response.status_code == 200:
+              print("LINKEDIN_USERINFO_SUCCESS")
+          else:
+              print("LINKEDIN_USERINFO_FAILED")
+          PY
+
+      - name: Stop after LinkedIn test
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git add topics_history.json
-          git add generated/latest_topic.txt
-          git add generated/latest_post.txt
-          git add generated/latest_image.png
-
-          if git diff --cached --quiet; then
-            echo "No repository changes to commit."
-          else
-            git commit -m "Update daily LinkedIn content"
-            git push
-          fi
-
-      - name: Upload generated content
-        uses: actions/upload-artifact@v4
-        with:
-          name: linkedin-generated-content
-          path: |
-            current_topic.txt
-            linkedin_post.txt
-            linkedin_test_hf.png
-          retention-days: 7
+          echo "LinkedIn API test completed."
+          echo "This is a temporary test workflow."
