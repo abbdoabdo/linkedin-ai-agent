@@ -1,3 +1,4 @@
+
 import os
 import sys
 from pathlib import Path
@@ -5,149 +6,139 @@ from pathlib import Path
 import requests
 
 
+# ============================================================
+# Configuration
+# ============================================================
+
 ACCESS_TOKEN = os.environ.get("LINKEDIN_ACCESS_TOKEN")
+PERSON_URN = os.environ.get("LINKEDIN_PERSON_URN")
 
 POST_FILE = Path("linkedin_post.txt")
 IMAGE_FILE = Path("linkedin_test_hf.png")
 
 LINKEDIN_API = "https://api.linkedin.com"
+
+# LinkedIn API version
 LINKEDIN_VERSION = "202602"
 
+
+# ============================================================
+# Helpers
+# ============================================================
 
 def fail(message):
     print(f"ERROR: {message}")
     sys.exit(1)
 
 
-def get_headers():
+def get_headers(content_type=True):
     if not ACCESS_TOKEN:
         fail("LINKEDIN_ACCESS_TOKEN is not configured.")
 
-    return {
-        "Authorization": f"Bearer {ACCESS_TOKEN}",
-        "X-Restli-Protocol-Version": "2.0.0",
-        "Linkedin-Version": LINKEDIN_VERSION,
-    }
-
-
-def get_member_urn():
-    """
-    Get the authenticated LinkedIn member ID.
-
-    The access token determines which LinkedIn account
-    will be used for publishing.
-    """
-
-    url = f"{LINKEDIN_API}/v2/userinfo"
-
     headers = {
         "Authorization": f"Bearer {ACCESS_TOKEN}",
+        "Linkedin-Version": LINKEDIN_VERSION,
+        "X-Restli-Protocol-Version": "2.0.0",
     }
 
-    print("Getting authenticated LinkedIn member...")
+    if content_type:
+        headers["Content-Type"] = "application/json"
 
-    response = requests.get(
-        url,
-        headers=headers,
-        timeout=30,
-    )
+    return headers
 
-    if response.status_code != 200:
-        print(response.text)
+
+def validate_person_urn():
+    """
+    Validate the configured LinkedIn Person URN.
+
+    Expected format:
+
+        urn:li:person:XXXXXXXX
+
+    This value must belong to the LinkedIn member
+    authenticated by the access token.
+    """
+
+    if not PERSON_URN:
         fail(
-            f"Could not retrieve LinkedIn member information. "
-            f"HTTP {response.status_code}"
+            "LINKEDIN_PERSON_URN is not configured.\n"
+            "Add your personal LinkedIn Person URN as a GitHub Secret."
         )
 
-    data = response.json()
+    if not PERSON_URN.startswith("urn:li:person:"):
+        fail(
+            "LINKEDIN_PERSON_URN has an invalid format.\n"
+            "Expected: urn:li:person:YOUR_PERSON_ID"
+        )
 
-    member_id = data.get("sub")
-
-    if not member_id:
-        print(data)
-        fail("LinkedIn member ID was not returned.")
-
-    member_urn = f"urn:li:person:{member_id}"
-
-    print(f"Authenticated member: {member_urn}")
-
-    return member_urn
+    print(f"Using LinkedIn author: {PERSON_URN}")
 
 
-def register_image_upload(member_urn):
+# ============================================================
+# Image Upload
+# ============================================================
+
+def initialize_image_upload():
     """
-    Register the image upload using the LinkedIn Assets API.
+    Initialize an image upload using LinkedIn Images API.
+
+    The returned upload URL is then used to upload
+    the generated PNG file.
     """
 
-    url = f"{LINKEDIN_API}/v2/assets?action=registerUpload"
-
-    headers = get_headers()
-    headers["Content-Type"] = "application/json"
+    url = f"{LINKEDIN_API}/rest/images?action=initializeUpload"
 
     payload = {
-        "registerUploadRequest": {
-            "recipes": [
-                "urn:li:digitalmediaRecipe:feedshare-image"
-            ],
-            "owner": member_urn,
-            "serviceRelationships": [
-                {
-                    "relationshipType": "OWNER",
-                    "identifier": "urn:li:userGeneratedContent",
-                }
-            ],
+        "initializeUploadRequest": {
+            "owner": PERSON_URN
         }
     }
 
-    print("Registering image upload...")
+    print("Initializing LinkedIn image upload...")
 
     response = requests.post(
         url,
-        headers=headers,
+        headers=get_headers(),
         json=payload,
-        timeout=30,
+        timeout=60,
     )
 
     if response.status_code not in (200, 201):
+        print("LinkedIn response:")
         print(response.text)
+
         fail(
-            f"Could not register LinkedIn image upload. "
+            "Could not initialize LinkedIn image upload. "
             f"HTTP {response.status_code}"
         )
 
-    data = response.json()
+    try:
+        data = response.json()
+    except ValueError:
+        print(response.text)
+        fail("LinkedIn returned an invalid JSON response.")
 
     value = data.get("value", {})
 
-    upload_mechanism = value.get("uploadMechanism", {})
-
-    upload_data = upload_mechanism.get(
-        "com.linkedin.digitalmedia.uploading.MediaUploadHttpRequest"
-    )
-
-    if not upload_data:
-        print(data)
-        fail("LinkedIn did not return upload information.")
-
-    upload_url = upload_data.get("uploadUrl")
-    asset = value.get("asset")
+    upload_url = value.get("uploadUrl")
+    image_urn = value.get("image")
 
     if not upload_url:
         print(data)
-        fail("LinkedIn upload URL was not returned.")
+        fail("LinkedIn did not return an image upload URL.")
 
-    if not asset:
+    if not image_urn:
         print(data)
-        fail("LinkedIn image asset URN was not returned.")
+        fail("LinkedIn did not return an image URN.")
 
-    print(f"Image asset: {asset}")
+    print(f"Image URN: {image_urn}")
 
-    return upload_url, asset
+    return upload_url, image_urn
 
 
 def upload_image(upload_url):
     """
-    Upload the actual PNG file to LinkedIn.
+    Upload the actual PNG image to LinkedIn.
     """
 
     if not IMAGE_FILE.exists():
@@ -162,70 +153,72 @@ def upload_image(upload_url):
                 "Content-Type": "image/png",
             },
             data=image_file,
-            timeout=120,
+            timeout=180,
         )
 
     if response.status_code not in (200, 201):
+        print("LinkedIn upload response:")
         print(response.text)
+
         fail(
-            f"Image upload failed. "
+            "LinkedIn image upload failed. "
             f"HTTP {response.status_code}"
         )
 
     print("IMAGE_UPLOAD_SUCCESS")
 
 
-def create_post(member_urn, asset_urn, post_text):
+# ============================================================
+# Create LinkedIn Post
+# ============================================================
+
+def create_post(post_text, image_urn):
     """
-    Create a public LinkedIn post containing the generated image.
+    Create a public LinkedIn post using the current Posts API.
+
+    Endpoint:
+
+        POST https://api.linkedin.com/rest/posts
     """
 
-    url = f"{LINKEDIN_API}/v2/ugcPosts"
-
-    headers = get_headers()
-    headers["Content-Type"] = "application/json"
+    url = f"{LINKEDIN_API}/rest/posts"
 
     payload = {
-        "author": member_urn,
-        "lifecycleState": "PUBLISHED",
-        "specificContent": {
-            "com.linkedin.ugc.ShareContent": {
-                "shareCommentary": {
-                    "text": post_text
-                },
-                "shareMediaCategory": "IMAGE",
-                "media": [
-                    {
-                        "status": "READY",
-                        "description": {
-                            "text": "Professional IT and technology visual"
-                        },
-                        "media": asset_urn,
-                        "title": {
-                            "text": "IT & Technology"
-                        },
-                    }
-                ],
+        "author": PERSON_URN,
+        "commentary": post_text,
+        "visibility": "PUBLIC",
+        "distribution": {
+            "feedDistribution": "MAIN_FEED",
+            "targetEntities": [],
+            "thirdPartyDistributionChannels": [],
+        },
+        "content": {
+            "media": {
+                "title": "IT & Technology",
+                "id": image_urn,
             }
         },
-        "visibility": {
-            "com.linkedin.ugc.MemberNetworkVisibility": "PUBLIC"
-        },
+        "lifecycleState": "PUBLISHED",
+        "isReshareDisabledByAuthor": False,
     }
 
-    print("Publishing LinkedIn post...")
+    print("Publishing LinkedIn post using Posts API...")
 
     response = requests.post(
         url,
-        headers=headers,
+        headers=get_headers(),
         json=payload,
         timeout=60,
     )
 
-    if response.status_code != 201:
+    print(f"LinkedIn HTTP status: {response.status_code}")
+
+    if response.status_code not in (200, 201):
+        print("LinkedIn API response:")
         print(response.text)
+
         fail(
-            f"LinkedIn post creation failed. "
+            "LinkedIn post creation failed. "
             f"HTTP {response.status_code}"
         )
 
@@ -236,16 +229,31 @@ def create_post(member_urn, asset_urn, post_text):
     if post_id:
         print(f"LinkedIn Post ID: {post_id}")
 
-    print("The post was published to the authenticated member profile.")
+    print("The post was published to the configured personal profile.")
 
+
+# ============================================================
+# Main
+# ============================================================
 
 def main():
     print("========================================")
     print(" LinkedIn Personal Profile Publisher")
+    print(" Posts API")
     print("========================================")
+
+    # --------------------------------------------------------
+    # Validate environment
+    # --------------------------------------------------------
 
     if not ACCESS_TOKEN:
         fail("LINKEDIN_ACCESS_TOKEN is not configured.")
+
+    validate_person_urn()
+
+    # --------------------------------------------------------
+    # Validate generated post
+    # --------------------------------------------------------
 
     if not POST_FILE.exists():
         fail(f"Post file not found: {POST_FILE}")
@@ -263,21 +271,32 @@ def main():
             f"{len(post_text)} characters."
         )
 
+    # --------------------------------------------------------
+    # Validate generated image
+    # --------------------------------------------------------
+
     if not IMAGE_FILE.exists():
         fail(f"Image file not found: {IMAGE_FILE}")
 
-    member_urn = get_member_urn()
+    print(f"Post characters: {len(post_text)}")
+    print(f"Image file: {IMAGE_FILE}")
+    print(f"Image size: {IMAGE_FILE.stat().st_size} bytes")
 
-    upload_url, asset_urn = register_image_upload(
-        member_urn
-    )
+    # --------------------------------------------------------
+    # Upload image
+    # --------------------------------------------------------
+
+    upload_url, image_urn = initialize_image_upload()
 
     upload_image(upload_url)
 
+    # --------------------------------------------------------
+    # Publish post
+    # --------------------------------------------------------
+
     create_post(
-        member_urn,
-        asset_urn,
-        post_text,
+        post_text=post_text,
+        image_urn=image_urn,
     )
 
     print("========================================")
